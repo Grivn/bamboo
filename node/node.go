@@ -10,6 +10,7 @@ import (
 	"github.com/gitferry/bamboo/log"
 	"github.com/gitferry/bamboo/message"
 	"github.com/gitferry/bamboo/socket"
+	"github.com/gitferry/bamboo/statistics"
 )
 
 // Node is the primary access point for every replica
@@ -40,10 +41,12 @@ type node struct {
 
 	sync.RWMutex
 	forwards map[string]*message.Transaction
+
+	statistics statistics.Statistics
 }
 
 // NewNode creates a new Node object from configuration
-func NewNode(id identity.NodeID, isByz bool) Node {
+func NewNode(id identity.NodeID, isByz bool, statistics statistics.Statistics) Node {
 	return &node{
 		id:     id,
 		isByz:  isByz,
@@ -53,6 +56,7 @@ func NewNode(id identity.NodeID, isByz bool) Node {
 		TxChan:      make(chan interface{}, config.Configuration.ChanBufferSize),
 		handles:     make(map[string]reflect.Value),
 		forwards:    make(map[string]*message.Transaction),
+		statistics:  statistics,
 	}
 }
 
