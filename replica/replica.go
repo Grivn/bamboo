@@ -136,22 +136,40 @@ func (r *Replica) HandleTmo(tmo pacemaker.TMO) {
 
 // handleQuery replies a query with the statistics of the node
 func (r *Replica) handleQuery(m message.Query) {
-	realAveProposeTime := float64(r.totalProposeDuration.Milliseconds()) / float64(r.processedNo)
+	aveCreateDuration := float64(r.totalCreateDuration.Milliseconds()) / float64(r.proposedNo)
 	aveProcessTime := float64(r.totalProcessDuration.Milliseconds()) / float64(r.processedNo)
-	aveVoteProcessTime := float64(r.totalVoteTime.Milliseconds()) / float64(r.roundNo)
+	aveVoteProcessTime := float64(r.totalVoteTime.Milliseconds()) / float64(r.voteNo)
 	aveBlockSize := float64(r.totalBlockSize) / float64(r.proposedNo)
-	//requestRate := float64(r.pd.TotalReceivedTxNo()) / time.Now().Sub(r.startTime).Seconds()
+	requestRate := float64(r.pd.TotalReceivedTxNo()) / time.Now().Sub(r.startTime).Seconds()
 	//committedRate := float64(r.committedNo) / time.Now().Sub(r.startTime).Seconds()
 	aveRoundTime := float64(r.totalRoundTime.Milliseconds()) / float64(r.roundNo)
-	aveProposeTime := aveRoundTime - aveProcessTime - aveVoteProcessTime
 	latency := float64(r.totalDelay.Milliseconds()) / float64(r.latencyNo)
-	//r.thrus += fmt.Sprintf("Time: %v s. Throughput: %v txs/s\n", time.Now().Sub(r.startTime).Seconds(), float64(r.totalCommittedTx)/time.Now().Sub(r.tmpTime).Seconds())
+	r.thrus += fmt.Sprintf("Time: %v s. Throughput: %v txs/s\n", time.Now().Sub(r.startTime).Seconds(), float64(r.totalCommittedTx)/time.Now().Sub(r.tmpTime).Seconds())
 	r.totalCommittedTx = 0
 	r.tmpTime = time.Now()
 	//status := fmt.Sprintf("chain status is: %s\nCommitted rate is %v.\nAve. block size is %v.\nAve. trans. delay is %v ms.\nAve. creation time is %f ms.\nAve. processing time is %v ms.\nAve. vote time is %v ms.\nRequest rate is %f txs/s.\nAve. round time is %f ms.\nLatency is %f ms.\nThroughput is %f txs/s.\n", r.Safety.GetChainStatus(), committedRate, aveBlockSize, aveTransDelay, aveCreateDuration, aveProcessTime, aveVoteProcessTime, requestRate, aveRoundTime, latency, throughput)
-	status := fmt.Sprintf("Ave. actual proposing time is %v ms.\nAve. proposing time is %v ms.\nAve. processing time is %v ms.\nAve. vote time is %v ms.\nAve. block size is %v.\nAve. round time is %v ms.\nLatency is %v ms.\n", realAveProposeTime, aveProposeTime, aveProcessTime, aveVoteProcessTime, aveBlockSize, aveRoundTime, latency)
+	status := fmt.Sprintf("chain status is: %s\nAve. block size is %v.\nAve. creation time is %f ms.\nAve. processing time is %v ms.\nAve. vote time is %v ms.\nRequest rate is %f txs/s.\nAve. round time is %f ms.\nLatency is %f ms.\nThroughput is: \n%v", r.Safety.GetChainStatus(), aveBlockSize, aveCreateDuration, aveProcessTime, aveVoteProcessTime, requestRate, aveRoundTime, latency, r.thrus)
 	m.Reply(message.QueryReply{Info: status})
 }
+
+//// handleQuery replies a query with the statistics of the node
+//func (r *Replica) handleQuery(m message.Query) {
+//	realAveProposeTime := float64(r.totalProposeDuration.Milliseconds()) / float64(r.processedNo)
+//	aveProcessTime := float64(r.totalProcessDuration.Milliseconds()) / float64(r.processedNo)
+//	aveVoteProcessTime := float64(r.totalVoteTime.Milliseconds()) / float64(r.roundNo)
+//	aveBlockSize := float64(r.totalBlockSize) / float64(r.proposedNo)
+//	//requestRate := float64(r.pd.TotalReceivedTxNo()) / time.Now().Sub(r.startTime).Seconds()
+//	//committedRate := float64(r.committedNo) / time.Now().Sub(r.startTime).Seconds()
+//	aveRoundTime := float64(r.totalRoundTime.Milliseconds()) / float64(r.roundNo)
+//	aveProposeTime := aveRoundTime - aveProcessTime - aveVoteProcessTime
+//	latency := float64(r.totalDelay.Milliseconds()) / float64(r.latencyNo)
+//	//r.thrus += fmt.Sprintf("Time: %v s. Throughput: %v txs/s\n", time.Now().Sub(r.startTime).Seconds(), float64(r.totalCommittedTx)/time.Now().Sub(r.tmpTime).Seconds())
+//	r.totalCommittedTx = 0
+//	r.tmpTime = time.Now()
+//	//status := fmt.Sprintf("chain status is: %s\nCommitted rate is %v.\nAve. block size is %v.\nAve. trans. delay is %v ms.\nAve. creation time is %f ms.\nAve. processing time is %v ms.\nAve. vote time is %v ms.\nRequest rate is %f txs/s.\nAve. round time is %f ms.\nLatency is %f ms.\nThroughput is %f txs/s.\n", r.Safety.GetChainStatus(), committedRate, aveBlockSize, aveTransDelay, aveCreateDuration, aveProcessTime, aveVoteProcessTime, requestRate, aveRoundTime, latency, throughput)
+//	status := fmt.Sprintf("Ave. actual proposing time is %v ms.\nAve. proposing time is %v ms.\nAve. processing time is %v ms.\nAve. vote time is %v ms.\nAve. block size is %v.\nAve. round time is %v ms.\nLatency is %v ms.\n", realAveProposeTime, aveProposeTime, aveProcessTime, aveVoteProcessTime, aveBlockSize, aveRoundTime, latency)
+//	m.Reply(message.QueryReply{Info: status})
+//}
 
 func (r *Replica) handleTxn(m message.Transaction) {
 	r.pd.AddTxn(&m)

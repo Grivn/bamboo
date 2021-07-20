@@ -33,8 +33,8 @@ distribute(){
     done
 }
 
-USERNAME="gaify"
-PASSWD="GaiFY#1"
+USERNAME="wanggr"
+PASSWD="W@ngGr#12"
 FIRST=true
 MAXPEERNUM=(`wc -l public_ips.txt | awk '{ print $1 }'`)
 
