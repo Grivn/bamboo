@@ -126,55 +126,65 @@ func Setup() {
 }
 
 func Debug(v ...interface{}) {
+	return
 	if log.severity == DEBUG {
 		log.debug.Output(2, fmt.Sprint(v...))
 	}
 }
 
 func Debugf(format string, v ...interface{}) {
+	return
 	if log.severity == DEBUG {
 		log.debug.Output(2, fmt.Sprintf(format, v...))
 	}
 }
 
 func Info(v ...interface{}) {
+	return
 	if log.severity <= INFO {
 		log.info.Output(2, fmt.Sprint(v...))
 	}
 }
 
 func Infof(format string, v ...interface{}) {
+	return
 	if log.severity <= INFO {
 		log.info.Output(2, fmt.Sprintf(format, v...))
 	}
 }
 
 func Warning(v ...interface{}) {
+	return
 	if log.severity <= WARNING {
 		log.warning.Output(2, fmt.Sprint(v...))
 	}
 }
 
 func Warningf(format string, v ...interface{}) {
+	return
 	if log.severity <= WARNING {
 		log.warning.Output(2, fmt.Sprintf(format, v...))
 	}
 }
 
 func Error(v ...interface{}) {
+	return
 	log.err.Output(2, fmt.Sprint(v...))
 }
 
 func Errorf(format string, v ...interface{}) {
+	return
 	log.err.Output(2, fmt.Sprintf(format, v...))
 }
 
 func Fatal(v ...interface{}) {
+	return
 	log.err.Output(2, fmt.Sprint(v...))
 	stdlog.Fatal(v...)
 }
 
 func Fatalf(format string, v ...interface{}) {
+	return
 	log.err.Output(2, fmt.Sprintf(format, v...))
 	stdlog.Fatalf(format, v...)
 }

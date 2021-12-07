@@ -44,10 +44,14 @@ type Replica struct {
 	startTime            time.Time
 	tmpTime              time.Time
 	voteStart            time.Time
+
+	totalReceivedTxs     int
+
 	totalCreateDuration  time.Duration
 	totalProcessDuration time.Duration
 	totalProposeDuration time.Duration
 	totalDelay           time.Duration
+	intervalDelay        time.Duration
 	totalRoundTime       time.Duration
 	totalVoteTime        time.Duration
 	totalBlockSize       int
@@ -55,6 +59,8 @@ type Replica struct {
 	roundNo              int
 	voteNo               int
 	totalCommittedTx     int
+	intervalCommittedTx  int
+	intervalLatencyNo    int
 	latencyNo            int
 	proposedNo           int
 	processedNo          int
@@ -134,28 +140,56 @@ func (r *Replica) HandleTmo(tmo pacemaker.TMO) {
 	r.eventChan <- tmo
 }
 
+
 // handleQuery replies a query with the statistics of the node
 func (r *Replica) handleQuery(m message.Query) {
-	//realAveProposeTime := float64(r.totalProposeDuration.Milliseconds()) / float64(r.processedNo)
-	//aveProcessTime := float64(r.totalProcessDuration.Milliseconds()) / float64(r.processedNo)
-	//aveVoteProcessTime := float64(r.totalVoteTime.Milliseconds()) / float64(r.roundNo)
-	//aveBlockSize := float64(r.totalBlockSize) / float64(r.proposedNo)
-	//requestRate := float64(r.pd.TotalReceivedTxNo()) / time.Now().Sub(r.startTime).Seconds()
-	//committedRate := float64(r.committedNo) / time.Now().Sub(r.startTime).Seconds()
-	//aveRoundTime := float64(r.totalRoundTime.Milliseconds()) / float64(r.roundNo)
-	//aveProposeTime := aveRoundTime - aveProcessTime - aveVoteProcessTime
+	aveCreateDuration := float64(r.totalCreateDuration.Milliseconds()) / float64(r.proposedNo)
+	aveProcessTime := float64(r.totalProcessDuration.Milliseconds()) / float64(r.processedNo)
+	aveVoteProcessTime := float64(r.totalVoteTime.Milliseconds()) / float64(r.voteNo)
+	aveBlockSize := float64(r.totalBlockSize) / float64(r.proposedNo)
+	requestRate := float64(r.totalReceivedTxs) / time.Now().Sub(r.startTime).Seconds()
+	memPoolRequestRate := float64(r.pd.TotalReceivedTxNo()) / time.Now().Sub(r.startTime).Seconds()
+	aveRoundTime := float64(r.totalRoundTime.Milliseconds()) / float64(r.roundNo)
+
 	latency := float64(r.totalDelay.Milliseconds()) / float64(r.latencyNo)
-	r.thrus += fmt.Sprintf("Time: %v s. Throughput: %v txs/s\n", time.Now().Sub(r.startTime).Seconds(), float64(r.totalCommittedTx)/time.Now().Sub(r.tmpTime).Seconds())
-	r.totalCommittedTx = 0
+	intervalLatency := float64(r.intervalDelay.Milliseconds()) / float64(r.intervalLatencyNo)
+	r.intervalDelay = 0
+	r.intervalLatencyNo = 0
+
+	throughput := float64(r.totalCommittedTx)/time.Now().Sub(r.startTime).Seconds()
+	intervalThroughput := float64(r.intervalCommittedTx)/time.Now().Sub(r.tmpTime).Seconds()
+	r.intervalCommittedTx = 0
 	r.tmpTime = time.Now()
-	status := fmt.Sprintf("Latency: %v\n%s", latency, r.thrus)
-	//status := fmt.Sprintf("chain status is: %s\nCommitted rate is %v.\nAve. block size is %v.\nAve. trans. delay is %v ms.\nAve. creation time is %f ms.\nAve. processing time is %v ms.\nAve. vote time is %v ms.\nRequest rate is %f txs/s.\nAve. round time is %f ms.\nLatency is %f ms.\nThroughput is %f txs/s.\n", r.Safety.GetChainStatus(), committedRate, aveBlockSize, aveTransDelay, aveCreateDuration, aveProcessTime, aveVoteProcessTime, requestRate, aveRoundTime, latency, throughput)
-	//status := fmt.Sprintf("Ave. actual proposing time is %v ms.\nAve. proposing time is %v ms.\nAve. processing time is %v ms.\nAve. vote time is %v ms.\nAve. block size is %v.\nAve. round time is %v ms.\nLatency is %v ms.\n", realAveProposeTime, aveProposeTime, aveProcessTime, aveVoteProcessTime, aveBlockSize, aveRoundTime, latency)
+
+	r.thrus += fmt.Sprintf("Time: %v s. Throughput: %v txs/s. Latency: %v\n", time.Now().Sub(r.startTime).Seconds(), intervalThroughput, intervalLatency)
+
+	status := fmt.Sprintf(
+		"chain status is: %s\n" +
+			"Ave. block size is %v.\n" +
+			"Ave. creation time is %f ms.\n" +
+			"Ave. processing time is %v ms.\n" +
+			"Ave. vote time is %v ms.\n" +
+			"Request rate is %f txs/s.\n" +
+			"MemPool request rate %f txs/s.\n"+
+			"Ave. round time is %f ms.\n" +
+			"Ave. Latency is %f ms.\n" +
+			"Ave. Throughput is %f tx/s.\n" +
+			"Throughput is: \n%v",
+		r.Safety.GetChainStatus(), aveBlockSize, aveCreateDuration, aveProcessTime, aveVoteProcessTime, requestRate, memPoolRequestRate, aveRoundTime, latency, throughput, r.thrus)
 	m.Reply(message.QueryReply{Info: status})
 }
 
 func (r *Replica) handleTxn(m message.Transaction) {
-	r.pd.AddTxn(&m)
+	i := 0
+	for {
+		if i == config.GetConfig().DupRecv {
+			break
+		}
+		r.totalReceivedTxs++
+		go r.pd.AddTxn(&m)
+		i++
+	}
+
 	r.startSignal()
 	// the first leader kicks off the protocol
 	if r.pm.GetCurView() == 0 && r.IsLeader(r.ID(), 1) {
@@ -173,10 +207,14 @@ func (r *Replica) processCommittedBlock(block *blockchain.Block) {
 			delay := time.Now().Sub(txn.Timestamp)
 			r.totalDelay += delay
 			r.latencyNo++
+
+			r.intervalDelay += delay
+			r.intervalLatencyNo++
 		}
 	}
 	r.committedNo++
 	r.totalCommittedTx += len(block.Payload)
+	r.intervalCommittedTx += len(block.Payload)
 	log.Infof("[%v] the block is committed, No. of transactions: %v, view: %v, current view: %v, id: %x", r.ID(), len(block.Payload), block.View, r.pm.GetCurView(), block.ID)
 }
 

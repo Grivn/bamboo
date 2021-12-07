@@ -31,6 +31,7 @@
   "crash": 20000,
   "estimate_num": 3,
   "estimate_window": 100,
+  "dup_recv": 5,
   "benchmark": {
     "T": 1200,
     "N": 0,
