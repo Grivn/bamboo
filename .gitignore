@@ -4,16 +4,16 @@
 *.dll
 *.so
 *.dylib
-server
-client
 
 # Test binary, built with `go test -c`
 *.test
 *.xml
 latency
 *.csv
-mem*
-cpu*
+mem_*
+cpu_*
+server.*.log
+client.*.log
 
 
 # Output of the go coverage tool, specifically when used with LiteIDE
@@ -23,3 +23,28 @@ cpu*
 # vendor/
 .idea/
 .DS_Store
+
+server.pid
+client.pid
+
+client/client
+server/server
+
+bin/client
+bin/server
+
+bin/deploy/client
+bin/deploy/server
+
+bin/deploy/linux/client
+bin/deploy/linux/server
+
+bin/deploy/linux-docker/client
+bin/deploy/linux-docker/server
+
+bin/deploy/macos/client
+bin/deploy/macos/server
+
+.log
+/package-lock.json
+/node_modules/
